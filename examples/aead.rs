@@ -5,8 +5,6 @@ use ring::{aead, error};
 struct OneNonceSequence(Option<aead::Nonce>);
 
 impl OneNonceSequence {
-    /// Constructs the sequence allowing `advance()` to be called
-    /// `allowed_invocations` times.
     fn new(nonce: aead::Nonce) -> Self {
         Self(Some(nonce))
     }
