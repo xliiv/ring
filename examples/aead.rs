@@ -20,6 +20,13 @@ impl aead::NonceSequence for OneNonceSequence {
     }
 }
 
+fn get_random_nonce() -> (Nonce, [u8; 12]) {
+    let rand_gen = SystemRandom::new();
+    let mut raw_nonce = [0u8; NONCE_LEN];
+    rand_gen.fill(&mut raw_nonce).unwrap();
+    (Nonce::assume_unique_for_key(raw_nonce), raw_nonce)
+}
+
 fn main() {
     let text = "content to encrypt";
     let mut in_out = text.as_bytes().to_vec();
@@ -40,12 +47,13 @@ fn main() {
         &mut key,
     );
     let unbound_key = aead::UnboundKey::new(&aead::AES_256_GCM, &key).unwrap();
-    let nonce = Nonce::assume_unique_for_key(rand_vec);
+    let (nonce, raw_nonce) = get_random_nonce();
     let nonce_sequence = OneNonceSequence::new(nonce);
     let mut s_key: aead::SealingKey<OneNonceSequence> = BoundKey::new(unbound_key, nonce_sequence);
     s_key
         .seal_in_place_append_tag(Aad::empty(), &mut in_out)
         .unwrap();
+    in_out.extend(&raw_nonce);
     println!("encrypted {:?}", &in_out);
 
     // decrypt
@@ -58,8 +66,8 @@ fn main() {
         &mut key,
     );
     let unbound_key = aead::UnboundKey::new(&aead::AES_256_GCM, &key).unwrap();
-    // Q: HOW CAN I NOT USE RAND_VEC, SINCE IN REAL PROGRAM IT WON'T BE ACCESSIBLE, RIGHT?
-    let nonce = Nonce::assume_unique_for_key(rand_vec);
+    let nonce = in_out.split_off(in_out.len() - NONCE_LEN);
+    let nonce = Nonce::try_assume_unique_for_key(&nonce).unwrap();
     let nonce_sequence = OneNonceSequence::new(nonce);
     let mut o_key: aead::OpeningKey<OneNonceSequence> = BoundKey::new(unbound_key, nonce_sequence);
     let decrypted = o_key
