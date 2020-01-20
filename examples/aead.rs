@@ -27,7 +27,6 @@ fn get_random_nonce() -> (Nonce, [u8; 12]) {
     (Nonce::assume_unique_for_key(raw_nonce), raw_nonce)
 }
 
-
 fn get_unbound_key() -> aead::UnboundKey {
     let mut key = [0; 32];
     pbkdf2::derive(
