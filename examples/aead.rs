@@ -1,8 +1,10 @@
 use core::num::NonZeroU32;
-use ring::aead::{Aad, BoundKey, Nonce, MAX_TAG_LEN, NONCE_LEN};
+use ring::aead::{Aad, BoundKey, Nonce, NONCE_LEN};
 use ring::pbkdf2;
 use ring::rand::{SecureRandom, SystemRandom};
 use ring::{aead, error};
+
+// aead is described in details here https://tools.ietf.org/html/rfc5116
 
 struct OneNonceSequence(Option<aead::Nonce>);
 
@@ -60,11 +62,9 @@ fn main() {
     let nonce = Nonce::assume_unique_for_key(rand_vec);
     let nonce_sequence = OneNonceSequence::new(nonce);
     let mut o_key: aead::OpeningKey<OneNonceSequence> = BoundKey::new(unbound_key, nonce_sequence);
-    o_key
+    let decrypted = o_key
         .open_in_place(Aad::empty(), &mut in_out)
         .expect("can't decrypt");
-    // Q: IS THIS CORRECT ANYWAY?
-    in_out.split_off(in_out.len() - MAX_TAG_LEN);
 
-    assert_eq!(in_out.as_slice(), text.as_bytes());
+    assert_eq!(decrypted, text.as_bytes());
 }
