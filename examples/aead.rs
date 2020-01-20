@@ -46,11 +46,6 @@ fn main() {
     let mut in_out = text.as_bytes().to_vec();
     println!("data {:?}", &in_out);
 
-    // generate nonce
-    let rand_gen = SystemRandom::new();
-    let mut rand_vec = [0u8; NONCE_LEN];
-    rand_gen.fill(&mut rand_vec).unwrap();
-
     // encrypt
     let unbound_key = get_unbound_key();
     let (nonce, raw_nonce) = get_random_nonce();
