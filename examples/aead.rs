@@ -27,6 +27,20 @@ fn get_random_nonce() -> (Nonce, [u8; 12]) {
     (Nonce::assume_unique_for_key(raw_nonce), raw_nonce)
 }
 
+
+fn get_unbound_key() -> aead::UnboundKey {
+    let mut key = [0; 32];
+    pbkdf2::derive(
+        pbkdf2::PBKDF2_HMAC_SHA256,
+        NonZeroU32::new(100).unwrap(),
+        // TODO: better salt, see RFC for details
+        &[0, 1, 2, 3, 4, 5, 6, 7],
+        b"nice password",
+        &mut key,
+    );
+    aead::UnboundKey::new(&aead::AES_256_GCM, &key).unwrap()
+}
+
 fn main() {
     let text = "content to encrypt";
     let mut in_out = text.as_bytes().to_vec();
@@ -38,15 +52,7 @@ fn main() {
     rand_gen.fill(&mut rand_vec).unwrap();
 
     // encrypt
-    let mut key = [0; 32];
-    pbkdf2::derive(
-        pbkdf2::PBKDF2_HMAC_SHA256,
-        NonZeroU32::new(100).unwrap(),
-        &[0, 1, 2, 3, 4, 5, 6, 7],
-        b"nice password",
-        &mut key,
-    );
-    let unbound_key = aead::UnboundKey::new(&aead::AES_256_GCM, &key).unwrap();
+    let unbound_key = get_unbound_key();
     let (nonce, raw_nonce) = get_random_nonce();
     let nonce_sequence = OneNonceSequence::new(nonce);
     let mut s_key: aead::SealingKey<OneNonceSequence> = BoundKey::new(unbound_key, nonce_sequence);
@@ -57,15 +63,7 @@ fn main() {
     println!("encrypted {:?}", &in_out);
 
     // decrypt
-    let mut key = [0; 32];
-    pbkdf2::derive(
-        pbkdf2::PBKDF2_HMAC_SHA256,
-        NonZeroU32::new(100).unwrap(),
-        &[0, 1, 2, 3, 4, 5, 6, 7],
-        b"nice password",
-        &mut key,
-    );
-    let unbound_key = aead::UnboundKey::new(&aead::AES_256_GCM, &key).unwrap();
+    let unbound_key = get_unbound_key();
     let nonce = in_out.split_off(in_out.len() - NONCE_LEN);
     let nonce = Nonce::try_assume_unique_for_key(&nonce).unwrap();
     let nonce_sequence = OneNonceSequence::new(nonce);
